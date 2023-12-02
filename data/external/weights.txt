@@ -1,0 +1,1 @@
+best weights are uploaded at https://huggingface.co/v-like/glocal-k-weights
