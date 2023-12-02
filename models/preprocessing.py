@@ -5,7 +5,7 @@ import torch
 from models.utils.config import *
 
 
-class MovieLensDataset:
+class MovieLensData:
     def __init__(self, user_item_matrix: pd.DataFrame, mask=False, impute=False, impute_strategy='mean'):
         self.data = user_item_matrix
         self.mask_tile = None
@@ -80,18 +80,25 @@ def extract_from_pandas(data_pd):
     return users, movies, predictions
 
 
-def load_data_cil(path=dataset_path, file=data_file, frac=0.1):
+def load_data_for_torch(path=dataset_path, file=data_file, frac=0.1):
     """
     Data preprocessing for Dataset creation
-    :param path:
-    :param file:
-    :param frac:
-    :return:
+
+    Partially taken from pytorch adaptation of official GLocal-Kernel code.
+    Source of the adaptation can be accessed by any of the links in
+    data/external/'GLocal-K implementation torch-adapted source.txt'
+    Source of the original tensorflow-based implementation can be accessed by the link in
+    data/external/'GLocal-K official tensorflow-based implementation.txt'
+    :param path: path to dataset
+    :param file: filename
+    :param frac: test size ratio (default: 0.1, which is 10%)
+    :return: number of movies, number of users, train numpy matrix, train_mask indicating non-zero entries,
+        test numpy matrix, test_mask indicating non-zero entries
     """
     data_pd = pd.read_csv(path + file, sep='\t', names=names)
     users, movies, predictions = extract_from_pandas(data_pd)
     data = pd.DataFrame.from_dict(
-        {user_col: users, movie_col: movies, "rating": predictions}
+        {user_col: users, movie_col: movies, rating_col: predictions}
     )
 
     indices_u, indices_m = np.unique(data[user_col]), np.unique(data[movie_col])
@@ -117,32 +124,25 @@ def load_data_cil(path=dataset_path, file=data_file, frac=0.1):
     for i in range(n_r):
         u_id = data.loc[idx[i]][user_col]
         m_id = data.loc[idx[i]][movie_col]
-        r = data.loc[idx[i]]["rating"]
+        r = data.loc[idx[i]][rating_col]
 
         if i < int(frac * n_r):
             test_r[indices_m.index(m_id), indices_u.index(u_id)] = r
         else:
             train_r[indices_m.index(m_id), indices_u.index(u_id)] = r
 
-    # masks indicating non-zero entries
     train_m = np.greater(train_r, 1e-12).astype("float32")
     test_m = np.greater(test_r, 1e-12).astype("float32")
-
-    print("data matrix loaded")
-    print("num of users: {}".format(n_u))
-    print("num of movies: {}".format(n_m))
-    print("num of training ratings: {}".format(n_r - int(frac * n_r)))
-    print("num of test ratings: {}".format(int(frac * n_r)))
 
     return n_m, n_u, train_r, train_m, test_r, test_m
 
 
-class CILDataset(torch.utils.data.Dataset):
+class MovieLensDataset(torch.utils.data.Dataset):
     """
     pytorch Dataset for further casting to DataLoader
     """
     def __init__(self, data_path, file):
-        self.data = load_data_cil(data_path, file)
+        self.data = load_data_for_torch(data_path, file)
 
     def __len__(self):
         return 1
@@ -151,11 +151,11 @@ class CILDataset(torch.utils.data.Dataset):
         return self.data
 
 
-class CILDataLoader(torch.utils.data.DataLoader):
+class MovieLensDataLoader(torch.utils.data.DataLoader):
     """
     pytorch DataLoader creation for torch models
     """
-    def __init__(self, file="u.data", data_path="data/raw/ml-100k", num_workers=8):
+    def __init__(self, file=data_file, data_path=dataset_path, num_workers=8):
         super().__init__(
-            CILDataset(data_path, file), batch_size=None, num_workers=num_workers
+            MovieLensDataset(data_path, file), batch_size=None, num_workers=num_workers
         )

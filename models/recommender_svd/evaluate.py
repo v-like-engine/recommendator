@@ -3,6 +3,14 @@ from models.recommender_svd.recommender_svd import RecommenderSVD
 
 
 def find_best_k(dataset, targets, k_pool=(2, 3, 5, 8, 16, 32, 50), print_best=True):
+    """
+    Find best n_components parameter using grid search over k_pool
+    :param dataset:
+    :param targets:
+    :param k_pool:
+    :param print_best:
+    :return: pair (best n_components, metrics measurements dictionary)
+    """
     results = []
     for f in k_pool:
         predicted_ratings = RecommenderSVD(dataset).predict_ratings(f)

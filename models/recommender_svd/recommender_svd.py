@@ -2,11 +2,11 @@ import numpy as np
 import pandas as pd
 from scipy.linalg import sqrtm
 
-from models.preprocessing import MovieLensDataset
+from models.preprocessing import MovieLensData
 
 
 class RecommenderSVD:
-    def __init__(self, data: MovieLensDataset):
+    def __init__(self, data: MovieLensData):
         self.data = data
 
     def svd_factorize(self, k):
